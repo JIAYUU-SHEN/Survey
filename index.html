@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Data Validation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f1f1f1;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #111;
+      font-size: 18px;
+    }
+    .video-frame {
+      width: 80%;
+      margin: 0 auto;
+      padding: 16px;
+      background-color: #f1f1f1;
+      display: flex;
+      justify-content: center;
+    }
+    .video-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .question-container {
+      text-align: center;
+      margin-top: 30px;
+    }
+    .question {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #111;
+    }
+    .option {
+      display: inline-flex;
+      margin: 0 4px;
+      padding: 10px 20px;
+      min-width: 100px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      color: #111;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+      justify-content: center;
+      align-items: center;
+    }
+    .option:hover {
+      background-color: #f5f5f5;
+      border-color: #111;
+    }
+    .option.selected {
+      background-color: #111;
+      color: #fff;
+      border-color: #111;
+    }
+    .button-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 30px;
+    }
+    #next-button, #start-survey-button {
+      padding: 12px 44px;
+      background-color: #111;
+      color: #fff;
+      border: 1px solid #111;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    #next-button:hover, #start-survey-button:hover {
+      background: #fff;
+      color: #111;
+      border: 1px solid #111;
+    }
+    #next-button:focus, #start-survey-button:focus {
+      outline: none;
+      background-color: #111;
+      color: #fff;
+    }
+    #text-answer {
+      display: block;
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #111;
+    }
+    #user-info-container {
+      gap: 20px;
+    }
+    #user-info-container h2 {
+      margin-bottom: 200px;
+    }
+    #user-info-container, #final-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      margin-bottom: 30px;
+    }
+    #user-input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      margin: 8px 0;
+    }
+    #user-input-row input, #user-input-row select {
+      margin: 8px;
+      padding: 10px;
+      width: 220px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    #answer-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      min-height: 56px;
+    }
+    #question-counter {
+      position: sticky;
+      top: 0;
+      background: #f1f1f1;
+      padding: 12px 0;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      z-index: 10;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="user-info-container">
+    <h2>3D Data Validation</h2>
+    <div id="user-input-row">
+      <input type="text" id="user-name" placeholder="Name">
+      <select id="dataset-select" style="margin:8px; padding:10px; width:220px; border-radius:5px; border:1px solid #ccc;">
+        <option value="">Select Videos</option>
+        <option value="./data/paths_1-100.json">Videos 1-100</option>
+        <option value="./data/paths_101-200.json">Videos 101-200</option>
+        <option value="./data/paths_201-300.json">Videos 201-300</option>
+        <option value="./data/paths_301-400.json">Videos 301-400</option>
+        <option value="./data/paths_401-500.json">Videos 401-500</option>
+        <option value="./data/paths_501-600.json">Videos 501-600</option>
+        <option value="./data/paths_601-700.json">Videos 601-700</option>
+        <option value="./data/paths_701-800.json">Videos 701-800</option>
+        <option value="./data/paths_801-900.json">Videos 801-900</option>
+        <option value="./data/paths_901-1000.json">Videos 901-1000</option>
+        <option value="./data/paths_1001-1100.json">Videos 1001-1100</option>
+        <option value="./data/paths_1101-1135.json">Videos 1101-1135</option>
+      </select>
+    </div>
+    <button id="start-survey-button">Start</button>
+  </div>
+
+  <div id="final-page" style="display:none;">
+    <h2 id="final-heading">Completed</h2>
+    <p id="final-message" style="margin-bottom: 120px;">Thank you for answering all questions.</p>
+    <div id="spinner" style="margin-top: 20px;">
+      <div style="border: 6px solid #e3e3e3; border-top: 6px solid #000000; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+    </div>
+  </div>
+
+  <div class="video-frame" style="display:none;">
+    <div class="video-container">
+      <video id="video-player" width="1280" height="720" controls preload="metadata">
+        <source id="video-source" src="" type="video/mp4">
+      </video>
+    </div>
+  </div>
+
+  <div class="question-container" id="question-container" style="display:none;">
+    <div id="answer-wrapper"></div>
+    <div class="button-row">
+      <button id="next-button">Next</button>
+    </div>
+  </div>
+
+  <div id="question-counter" style="display:none; text-align:center; font-size:18px; margin-top:20px; color:#111;">
+    1 / 1
+  </div>
+
+  <script>
+    let totalRounds = 0;
+    let currentRound = 0;
+    let videoIds = [];
+    let responses = [];
+    let userName = "";
+    let datasetFile = "";
+
+    function isCurrentQuestionAnswered() {
+      const textInput = document.getElementById('text-answer');
+      const selectedLikert = document.querySelector('#answer-wrapper .option.selected');
+
+      const textValid = textInput && textInput.value.trim().length > 0;
+
+      const ratingValid = selectedLikert !== null;
+
+      return textValid && ratingValid;
+    }
+
+    function saveCurrentResponse() {
+      const answer = document.getElementById('text-answer').value.trim();
+      const selectedLikert = document.querySelector('#answer-wrapper .option.selected');
+      
+      const rating = selectedLikert ? parseInt(selectedLikert.textContent) : null;
+
+      responses[currentRound] = {
+        name: userName,
+        dataset: datasetFile,
+        round: currentRound + 1,
+        file: videoIds[currentRound],
+        answer,
+        rating
+      };
+    }
+
+    function loadRound(index) {
+      const videoPath = videoIds[index];
+
+      const video = document.getElementById('video-player');
+      const source = document.getElementById('video-source');
+
+      source.src = videoPath;
+      video.load();
+      video.currentTime = 0;
+      video.pause();
+
+      const answerWrapper = document.getElementById('answer-wrapper');
+      answerWrapper.innerHTML = '';
+
+      // Restore previous answer if exists
+      const prevResponse = responses[index];
+
+      // Text question
+      const qText = document.createElement('div');
+      qText.textContent = 'What is signed in the video?';
+      qText.style.fontSize = '18px';
+      qText.style.marginBottom = '12px';
+      qText.style.textAlign = 'center';
+
+      answerWrapper.appendChild(qText);
+
+      // Text input
+      const textInput = document.createElement('input');
+      textInput.type = 'text';
+      textInput.id = 'text-answer';
+      textInput.placeholder = 'Type your answer here...';
+      textInput.className = 'text-answer';
+
+      if (prevResponse && prevResponse.answer) {
+        textInput.value = prevResponse.answer;
+      }
+
+      answerWrapper.appendChild(textInput);
+
+      textInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+      });
+
+      // Likert question
+      const likertLabel = document.createElement('div');
+      likertLabel.textContent = 'What is the quality of the animation?';
+      likertLabel.style.fontSize = '18px';
+      likertLabel.style.marginTop = '24px';
+      likertLabel.style.marginBottom = '12px';
+      likertLabel.style.textAlign = 'center';
+
+      answerWrapper.appendChild(likertLabel);
+
+      // Likert scale
+      const likertDiv = document.createElement('div');
+      likertDiv.style.display = 'flex';
+      likertDiv.style.gap = '10px';
+      likertDiv.style.justifyContent = 'center';
+
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement('div');
+        btn.className = 'option';
+
+        btn.innerHTML = `
+          <div style="text-align:center;">
+            <div>${i}</div>
+            <div style="font-size:12px;">
+              ${['Very Low','Low','Neutral','High','Very High'][i-1]}
+            </div>
+          </div>
+        `;
+
+        if (prevResponse && prevResponse.rating === i) {
+          btn.classList.add('selected');
+        }
+
+        btn.addEventListener('click', () => {
+          likertDiv.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+
+        likertDiv.appendChild(btn);
+      }
+
+      answerWrapper.appendChild(likertDiv);
+
+      // Preload next video
+      if (index + 1 < videoIds.length) {
+        const preloadVideo = document.createElement('video');
+        preloadVideo.preload = 'metadata';
+        preloadVideo.src = videoIds[index + 1];
+      }
+
+      document.getElementById('question-counter').textContent = `${index + 1} / ${totalRounds}`;
+    }
+
+    function showFinalPage() {
+      document.querySelector('.video-frame').style.display = 'none';
+      document.getElementById('question-container').style.display = 'none';
+      document.getElementById('question-counter').style.display = 'none';
+      document.getElementById('final-page').style.display = 'flex';
+
+      // Check if all questions are answered
+      const allAnswered = responses.filter(r => r && r.answer && r.answer.trim() !== '' && r.rating !== null).length === totalRounds;
+
+      const finalHeading = document.getElementById('final-heading');
+      const finalMessage = document.getElementById('final-message');
+      const spinner = document.getElementById('spinner');
+ 
+      if (allAnswered) {
+        finalHeading.textContent = 'Survey Complete';
+        finalMessage.textContent = 'Thank you for answering all questions.';
+        spinner.style.display = 'inline-block';
+        submitToGoogleSheets(responses)
+      } else {
+        finalHeading.textContent = 'Incomplete Survey';
+        finalMessage.textContent = 'Please answer all questions.';
+        spinner.style.display = 'none';
+      }
+    }
+
+    function submitToGoogleSheets(responses) {
+      fetch('https://script.google.com/macros/s/AKfycbzX3rOqjFSQePttBfbAMn8ki8ixIfpQqpuL7K7157qsOeSpqo6pdn1VKU837CKFG5BUZQ/exec', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(responses)
+      }).then(() => {
+        document.getElementById('final-message').textContent = 'Responses successfully saved.';
+        document.getElementById('spinner').style.visibility = 'hidden';
+      }).catch(error => {
+        document.getElementById('final-message').textContent = 'Error saving responses. Please try again later.';
+        document.getElementById('spinner').style.visibility = 'hidden';
+      });
+    }
+
+    // Start button handler
+    document.getElementById('start-survey-button').addEventListener('click', async () => {
+      userName = document.getElementById('user-name').value.trim();
+      if (!userName) return alert('Please enter your name');
+
+      datasetFile = document.getElementById('dataset-select').value;
+      if (!datasetFile) return alert('Please select a dataset');
+
+      const response = await fetch(datasetFile);
+      videoIds = await response.json();
+
+      videoIds.sort(() => Math.random() - 0.5);
+
+      totalRounds = videoIds.length;
+      responses = [];
+      currentRound = 0;
+
+      document.getElementById('user-info-container').style.display = 'none';
+      document.querySelector('.video-frame').style.display = '';
+      document.getElementById('question-container').style.display = '';
+      document.getElementById('question-counter').style.display = '';
+
+      loadRound(0);
+    });
+
+    // Next button handler
+    document.getElementById('next-button').addEventListener('click', () => {
+
+      if (!isCurrentQuestionAnswered()) {
+        alert('Please answer both questions before continuing');
+        return;
+      }
+
+      saveCurrentResponse();
+
+      currentRound++;
+
+      if (currentRound >= totalRounds) {
+        showFinalPage();
+      } else {
+        loadRound(currentRound);
+      }
+    });
+  </script>
+</body>
+</html>
