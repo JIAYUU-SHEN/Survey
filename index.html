@@ -210,6 +210,7 @@
     let responses = [];
     let userName = "";
     let datasetFile = "";
+    let videoNameMap = {}; // maps renamed filename -> original filename
 
     function isCurrentQuestionAnswered() {
       const textInput = document.getElementById('text-answer');
@@ -228,11 +229,16 @@
       
       const rating = selectedLikert ? parseInt(selectedLikert.textContent) : null;
 
+      const filePath = videoIds[currentRound];
+      const renamedFilename = filePath.split('/').pop();
+      const originalName = videoNameMap[renamedFilename] || renamedFilename;
+
       responses[currentRound] = {
         name: userName,
         dataset: datasetFile,
         round: currentRound + 1,
-        file: videoIds[currentRound],
+        file: filePath,
+        original_name: originalName,
         answer,
         rating
       };
@@ -378,6 +384,27 @@
       });
     }
 
+    // Load video name map from map.txt
+    async function loadVideoNameMap() {
+      try {
+        const res = await fetch('./data/seygin/videos/map.txt');
+        const text = await res.text();
+        const lines = text.split('\n');
+        for (const line of lines) {
+          const parts = line.split('\t');
+          if (parts.length >= 2) {
+            const originalName = parts[0].trim();
+            const renamedName = parts[1].trim();
+            if (renamedName && originalName && renamedName !== 'new_name') {
+              videoNameMap[renamedName] = originalName;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load map.txt:', e);
+      }
+    }
+
     // Start button handler
     document.getElementById('start-survey-button').addEventListener('click', async () => {
       userName = document.getElementById('user-name').value.trim();
@@ -385,6 +412,8 @@
 
       datasetFile = document.getElementById('dataset-select').value;
       if (!datasetFile) return alert('Please select a dataset');
+
+      await loadVideoNameMap();
 
       const response = await fetch(datasetFile);
       videoIds = await response.json();
