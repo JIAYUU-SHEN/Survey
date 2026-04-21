@@ -264,6 +264,67 @@
     let datasetFile = "";
     let videoNameMap = {}; // maps renamed filename -> original filename
 
+    // === Session duplicate check config ===
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxLKUSG7YdJ1R2B4V1kKnR-48K5vY49WVVfQKgnJedgS5pKp9wLSKTogvsZc9j9AI5u/exec';
+    const COMPLETED_STORAGE_KEY = 'completedSessions';
+    let lastCheckKey = ''; // prevents duplicate alerts (debounce)
+
+    function normalizeName(name) {
+      return (name || '').trim().toLowerCase();
+    }
+
+    // --- local cache helpers ---
+    function getLocalCompleted() {
+      try {
+        return JSON.parse(localStorage.getItem(COMPLETED_STORAGE_KEY) || '{}');
+      } catch {
+        return {};
+      }
+    }
+    function isLocallyCompleted(name, dataset) {
+      const map = getLocalCompleted();
+      const key = normalizeName(name);
+      return Array.isArray(map[key]) && map[key].includes(dataset);
+    }
+    function markLocallyCompleted(name, dataset) {
+      const map = getLocalCompleted();
+      const key = normalizeName(name);
+      if (!Array.isArray(map[key])) map[key] = [];
+      if (!map[key].includes(dataset)) map[key].push(dataset);
+      localStorage.setItem(COMPLETED_STORAGE_KEY, JSON.stringify(map));
+    }
+
+    // --- remote Google Sheets check (read-only) ---
+    async function remoteIsCompleted(name, dataset) {
+      const url = `${GAS_URL}?action=checkCompleted&name=${encodeURIComponent(normalizeName(name))}&dataset=${encodeURIComponent(dataset)}`;
+      const res = await fetch(url, { method: 'GET' });
+      const data = await res.json();
+      return !!data.completed;
+    }
+
+    // --- combined check: localStorage OR remote ---
+    async function checkIfSessionCompleted(name, dataset) {
+      if (isLocallyCompleted(name, dataset)) return true;
+      try {
+        return await remoteIsCompleted(name, dataset);
+      } catch (e) {
+        console.warn('Remote check failed, falling back to local only:', e);
+        return isLocallyCompleted(name, dataset);
+      }
+    }
+
+    // --- UI-side debounced check (Name + dataset change) ---
+    async function liveCheck() {
+      const name = document.getElementById('user-name').value.trim();
+      const dataset = document.getElementById('dataset-select').value;
+      if (!name || !dataset) return;
+      const key = `${normalizeName(name)}|${dataset}`;
+      if (key === lastCheckKey) return;
+      lastCheckKey = key;
+      const done = await checkIfSessionCompleted(name, dataset);
+      if (done) alert('这个已经做过了');
+    }
+
     function isCurrentQuestionAnswered() {
       const textInput = document.getElementById('text-answer');
       const selectedLikert = document.querySelector('#answer-wrapper .option.selected');
@@ -420,7 +481,7 @@
     }
 
     function submitToGoogleSheets(responses) {
-      fetch('https://script.google.com/macros/s/AKfycbxLKUSG7YdJ1R2B4V1kKnR-48K5vY49WVVfQKgnJedgS5pKp9wLSKTogvsZc9j9AI5u/exec', {
+      fetch(GAS_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -428,9 +489,16 @@
         },
         body: JSON.stringify(responses)
       }).then(() => {
+        // Only mark completed after successful append on the server side.
+        // Apps Script auto-writes a row to completed_sessions for every full batch received,
+        // so the remote side is already updated. Here we just mirror it to localStorage.
+        if (userName && datasetFile) {
+          markLocallyCompleted(userName, datasetFile);
+        }
         document.getElementById('final-message').textContent = 'Responses successfully saved.';
         document.getElementById('spinner').style.visibility = 'hidden';
       }).catch(error => {
+        // On failure: do NOT mark as completed (neither locally nor remotely).
         document.getElementById('final-message').textContent = 'Error saving responses. Please try again later.';
         document.getElementById('spinner').style.visibility = 'hidden';
       });
@@ -457,6 +525,14 @@
       }
     }
 
+    // Live duplicate check when Name or dataset changes
+    document.getElementById('user-name').addEventListener('change', liveCheck);
+    document.getElementById('user-name').addEventListener('blur', liveCheck);
+    document.getElementById('dataset-select').addEventListener('change', () => {
+      lastCheckKey = ''; // force re-check on dataset change
+      liveCheck();
+    });
+
     // Start button handler
     document.getElementById('start-survey-button').addEventListener('click', async () => {
       userName = document.getElementById('user-name').value.trim();
@@ -464,6 +540,13 @@
 
       datasetFile = document.getElementById('dataset-select').value;
       if (!datasetFile) return alert('Please select a dataset');
+
+      // Hard gate: re-check before starting, even if live check already ran.
+      const alreadyDone = await checkIfSessionCompleted(userName, datasetFile);
+      if (alreadyDone) {
+        alert('这个已经做过了');
+        return;
+      }
 
       await loadVideoNameMap();
 
