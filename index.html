@@ -322,7 +322,7 @@
       if (key === lastCheckKey) return;
       lastCheckKey = key;
       const done = await checkIfSessionCompleted(name, dataset);
-      if (done) alert('这个已经做过了');
+      if (done) alert('You have already completed this session.');
     }
 
     function isCurrentQuestionAnswered() {
@@ -544,7 +544,7 @@
       // Hard gate: re-check before starting, even if live check already ran.
       const alreadyDone = await checkIfSessionCompleted(userName, datasetFile);
       if (alreadyDone) {
-        alert('这个已经做过了');
+        alert('You have already completed this session.');
         return;
       }
 
